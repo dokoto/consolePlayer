@@ -1,9 +1,7 @@
 'use strict';
 
+//http://techslides.com/demos/sample-videos/small.mp4
 
-/**************************************************************************/
-/******************* The actual code for moving pictures ******************/
-/**************************************************************************/
 
 let defaults = {
     width: 64, //32;
@@ -14,13 +12,13 @@ let defaults = {
     source: 'image', // 'image', 'camera', 'video'
     asciiSigns: " ␣I░▒▓█", // ASCII table, from brightest to darkest
     useCam: false,
-    host: 'http://10.80.80.126/',
+    url: 'http://localhost/',
     lastDraw: 0
 };
 
 class ConsolePlayer {
     constructor(options) {
-        this.options = options || defaults;
+        this._mergeOptions(options, defaults);
         this.canvas = null;
         this.source = null;
         this.context = null;
@@ -35,7 +33,19 @@ class ConsolePlayer {
     }
 
     play() {
+        this._setSource();
         this._draw();
+    }
+
+    _mergeOptions(options, defaults) {
+        this.options = {};
+        for (let item in defaults) {
+            this.options[item] = options[item] || defaults[item];
+        }
+    }
+
+    _cleanCosole() {
+      console.clear();
     }
 
     _setSource() {
@@ -43,10 +53,19 @@ class ConsolePlayer {
         this.canvas.width = this.options.width;
         this.canvas.height = this.options.height;
         this.context = this.canvas.getContext('2d');
-        if (this.options.source === 'video' || this.options.source === 'camera') {
-            window.setInterval(function() {
-                console.clear();
-            }, 3000);
+        if (this.options.clear && (this.options.source === 'video' || this.options.source === 'camera')) {
+            window.setInterval(this._cleanCosole, 3000);
+        }
+        switch (this.options.source) {
+            case 'video':
+                this._setVideoSource();
+                break;
+            case 'camera':
+                this._setCameraSource();
+                break;
+            case 'image':
+                this._setImageSource();
+                break;
         }
     }
 
@@ -57,7 +76,7 @@ class ConsolePlayer {
         this.source.autoplay = true;
         this.source.muted = true;
         this.source.loop = true;
-        this.source.src = this.options.host + 'Users/Public/Videos/Sample%20Videos/rick-orig.mp4';
+        this.source.src = this.options.url;
     }
 
     _setCameraSource() {
@@ -72,7 +91,7 @@ class ConsolePlayer {
         this.source = new window.Image();
         this.source.width = this.options.width;
         this.source.height = this.options.height;
-        this.source.src = this.options.host + 'Users/malfaros/TMP/avatarE454989.jpg';
+        this.source.src = this.options.url;
     }
 
     _error(error) {
@@ -81,15 +100,14 @@ class ConsolePlayer {
 
 
     _draw() {
-        if (this.source === 'video' || this.source === 'camera') {
-            window.requestAnimationFrame(this._draw);
+        if (this.options.source === 'video' || this.options.source === 'camera') {
+            window.requestAnimationFrame(this._draw.bind(this));
         }
         // Framerate: requestAnimationFrame / (skip+1)
         // or in other words: how many frames will be skipped each time
-        if (this.source !== 'image' && ++this.lastDraw < this.options.skip) {
+        if (this.options.source !== 'image' && ++this.options.lastDraw < this.options.skip) {
             return;
-        }
-        else {
+        } else {
             this.options.lastDraw = 0;
         }
 
@@ -118,42 +136,49 @@ class ConsolePlayer {
     }
 
     _renderImage(w, h) {
-        let pix = context.getImageData(0, 0, w, h).data;
+        let pix = this.context.getImageData(0, 0, w, h).data;
 
-        if (procedure === 'ascii') drawAscii(pix, w, h, asciiSigns);
-        else if (procedure === 'color') drawColored(pix, w, h);
-        else if (procedure === 'blackandwhite') drawBlackAndWhite(pix, w, h);
-        else if (procedure === 'rainbow') drawRainbow(w, h);
-
-        else backimg();
+        if (this.options.procedure === 'ascii') {
+            this._drawAscii(pix, w, h, this.options.asciiSigns);
+        } else if (this.options.procedure === 'color') {
+            this._drawColored(pix, w, h);
+        } else if (this.options.procedure === 'blackandwhite') {
+            this._drawBlackAndWhite(pix, w, h);
+        } else if (this.options.procedure === 'rainbow') {
+            this._drawRainbow(w, h);
+        } else {
+            this._backimg();
+        }
     }
 
     _drawRainbow(cols, rows) {
 
-        var text = "\n";
-        var char = String.fromCharCode("0x2588"); // Full Block
-        var styles = [];
-        var gap = 8;
+        let text = "\n";
+        let char = String.fromCharCode("0x2588"); // Full Block
+        let styles = [];
+        let gap = 8;
+        let style, t, t1, t2, cx, cy, hue, sat, lig;
 
-        for (var y = 0; y < rows; y++) {
+        for (let y = 0; y < rows; y++) {
 
             text += "%c" + char + "\n";
+            style = "color:transparent; text-shadow:";
 
-            var style = "color:transparent; text-shadow:";
-
-            for (var x = 0; x < cols; x++) {
-                var t = window.performance.now() / 1000;
-                var t1 = Math.sin(t) * 0.5 + 0.5; // Oscillates between 0 and 1
-                var t2 = Math.sin(t + 4000) * 0.25 + 0.75; // Alternative oscillation
-                var cx = x / cols;
-                var cy = y / rows;
-                var hue = Math.round((cx * cx * t2 + cy * cy * t1) * 360);
-                var sat = 100;
-                var lig = 70;
+            for (let x = 0; x < cols; x++) {
+                t = window.performance.now() / 1000;
+                t1 = Math.sin(t) * 0.5 + 0.5; // Oscillates between 0 and 1
+                t2 = Math.sin(t + 4000) * 0.25 + 0.75; // Alternative oscillation
+                cx = x / cols;
+                cy = y / rows;
+                hue = Math.round((cx * cx * t2 + cy * cy * t1) * 360);
+                sat = 100;
+                lig = 70;
 
                 // text-shadow: [X]px 0 hsl(220, 100, 70) [seperate with comma, if not last]
                 style += (x * gap) + "px 0 hsl(" + hue + "," + sat + "%," + lig + "%)";
-                if (x < (cols - 1)) style += ", ";
+                if (x < (cols - 1)) {
+                    style += ", ";
+                }
             }
 
             styles.push(style);
@@ -161,7 +186,6 @@ class ConsolePlayer {
 
         // Text as first entry in array
         styles.unshift(text);
-        if (clear) console.clear();
         console.log.apply(console, styles);
     }
 
@@ -169,21 +193,19 @@ class ConsolePlayer {
 
     _drawAscii(pix, w, h, signs) {
 
-        var text = "\n";
-        if (signs === '') signs = "X";
+        let text = "\n",
+            lum, step, index;
+        if (signs === '') {
+            signs = "X";
+        }
 
-        for (var y = 0; y < h; y++) {
+        for (let y = 0; y < h; y++) {
 
-            for (var i = y * (4 * w); i < y * (4 * w) + (4 * w); i += 4) {
-                var r = pix[i];
-                var g = pix[i + 1];
-                var b = pix[i + 2];
-
+            for (let i = y * (4 * w); i < y * (4 * w) + (4 * w); i += 4) {
                 // Luminance calculated from RGB
-                var lum = 0.2126 * r + 0.7152 * b + 0.0722 * g;
-
-                var step = 255 / (signs.length - 1); // Ex: 255/6 = 42.5
-                var index = Math.floor((signs.length - 1) - lum / step);
+                lum = 0.2126 * pix[i] + 0.7152 * pix[i + 1] + 0.0722 * pix[i + 2];
+                step = 255 / (signs.length - 1); // Ex: 255/6 = 42.5
+                index = Math.floor((signs.length - 1) - lum / step);
 
                 // Twice the sign to compensate its vertical nature
                 text += signs[index] + signs[index];
@@ -194,7 +216,6 @@ class ConsolePlayer {
 
         }
 
-        if (clear) console.clear();
         console.log(text);
 
     }
@@ -202,18 +223,14 @@ class ConsolePlayer {
 
     _drawColored(pix, w, h) {
 
-        var blocks = "\n";
-        var styles = [];
-        var char = String.fromCharCode("0x3000"); // Big Space
+        let blocks = "\n";
+        let styles = [];
+        let char = String.fromCharCode("0x3000"); // Big Space
 
-        for (var y = 0; y < h; y++) {
+        for (let y = 0; y < h; y++) {
 
-            for (var x = y * (4 * w); x < y * (4 * w) + (4 * w); x += 4) {
-                var r = pix[x];
-                var g = pix[x + 1];
-                var b = pix[x + 2];
-
-                styles.push("background-color: rgb(" + r + "," + g + "," + b + ");");
+            for (let x = y * (4 * w); x < y * (4 * w) + (4 * w); x += 4) {
+                styles.push("background-color: rgb(" + pix[x] + "," + pix[x + 1] + "," + pix[x + 2] + ");");
 
                 blocks += "%c" + char;
             }
@@ -223,14 +240,13 @@ class ConsolePlayer {
         }
 
         styles.unshift(blocks);
-        if (clear) console.clear();
         console.log.apply(console, styles);
 
     }
 
     _desaturate(r, g, b) {
-        var intensity = 0.3 * r + 0.59 * g + 0.11 * b;
-        var k = 1;
+        let intensity = 0.3 * r + 0.59 * g + 0.11 * b;
+        let k = 1;
         r = Math.floor(intensity * k + r * (1 - k));
         g = Math.floor(intensity * k + g * (1 - k));
         b = Math.floor(intensity * k + b * (1 - k));
@@ -239,20 +255,16 @@ class ConsolePlayer {
 
     _drawBlackAndWhite(pix, w, h) {
 
-        var blocks = "\n";
-        var styles = [];
-        var char = String.fromCharCode("0x3000"); // Big Space
+        let blocks = "\n",
+            baw;
+        let styles = [];
+        let char = String.fromCharCode("0x3000"); // Big Space
 
-        for (var y = 0; y < h; y++) {
+        for (let y = 0; y < h; y++) {
 
-            for (var x = y * (4 * w); x < y * (4 * w) + (4 * w); x += 4) {
-                var r = pix[x];
-                var g = pix[x + 1];
-                var b = pix[x + 2];
-                var baw = desaturate(r, g, b);
-
+            for (let x = y * (4 * w); x < y * (4 * w) + (4 * w); x += 4) {
+                baw = this._desaturate(pix[x], pix[x + 1], pix[x + 2]);
                 styles.push("background-color: rgb(" + baw[0] + "," + baw[1] + "," + baw[2] + ")");
-
                 blocks += "%c" + char;
             }
 
@@ -261,32 +273,35 @@ class ConsolePlayer {
         }
 
         styles.unshift(blocks);
-        if (clear) console.clear();
+        if (this.options.clear) {
+            console.clear();
+        }
         console.log.apply(console, styles);
 
     }
 
     _backimg() {
-        var url = canvas.toDataURL();
+        let url = this.canvas.toDataURL();
         console.log("%c   ", "font-size:200px; background-image:url(" + url + "); background-size:contain; background-repeat:no-repeat; background-position:center");
     }
 
 
     _getStream(video) {
         if (window.navigator.getUserMedia) {
-            window.navigator.getUserMedia(constraint, function(stream) {
+            window.navigator.getUserMedia(this.constraint, function(stream) {
                 video.src = stream;
-            }, error);
+            }, this._error);
         } else if (window.navigator.webkitGetUserMedia) {
-            window.navigator.webkitGetUserMedia(constraint, function(stream) {
+            window.navigator.webkitGetUserMedia(this.constraint, function(stream) {
                 video.src = window.URL.createObjectURL(stream);
-            }, error);
+            }, this._error);
         } else if (window.navigator.mozGetUserMedia) {
-            window.navigator.mozGetUserMedia(constraint, function(stream) {
+            window.navigator.mozGetUserMedia(this.constraint, function(stream) {
                 video.src = window.URL.createObjectURL(stream);
-            }, error);
+            }, this._error);
         }
     }
 }
+
 
 module.exports = ConsolePlayer;

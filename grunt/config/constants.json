@@ -1,0 +1,8 @@
+{
+    "APPNAME": "consoleplayer",
+    "VERSIONAPP": "0.0.1",
+    "BUILDDATE": "",
+    "MODE": "dev",
+    "ENV": "pre",
+    "MOCKS": true
+}
